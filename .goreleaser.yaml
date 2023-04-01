@@ -1,0 +1,47 @@
+before:
+  hooks:
+    - go mod tidy
+    - go generate ./...
+builds:
+  - env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w -X github.com/nanih98/aws-sso/cmd.version={{ .Tag }}
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+archives:
+  - replacements:
+      darwin: Darwin
+      linux: Linux
+      windows: Windows
+      amd64: x86_64
+checksum:
+  name_template: 'checksums.txt'
+snapshot:
+  name_template: "{{ .Tag }}"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+
+#brews:
+#  - # GitHub repository to push the formula
+#    tap:
+#      owner: nanih98
+#      name: aws-sso
+#    name: aws-sso
+#    url_template: "https://github.com/nanih98/aws-sso/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+#    homepage: https://github.com/nanih98/aws-sso
+#    commit_author:
+#      name: goreleaserbot
+#      email: bot@goreleaser.com
+#    folder: Formula
+#    description: "AWS account credentials using SSO"
+#    license: "Apache 2.0 license"
