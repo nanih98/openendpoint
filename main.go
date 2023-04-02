@@ -4,8 +4,8 @@ import (
 	"bufio"
 	"context"
 	"crypto/tls"
-	"flag"
 	"fmt"
+	"github.com/akamensky/argparse"
 	"github.com/nanih98/openendpoint/logger"
 	"go.uber.org/zap"
 	"log"
@@ -41,22 +41,25 @@ func ReadFuzzFile() []string {
 	return words
 }
 
-func Mutations(keyword string) []string {
+func Mutations(keywords []string) []string {
 	var mutations []string
 
 	words := ReadFuzzFile()
 
 	for _, word := range words {
-		// Appends
-		mutations = append(mutations, fmt.Sprintf("http://%s%s.%s", word, keyword, S3_URL))
-		mutations = append(mutations, fmt.Sprintf("http://%s.%s.%s", word, keyword, S3_URL))
-		mutations = append(mutations, fmt.Sprintf("http://%s-%s.%s", word, keyword, S3_URL))
+		for _, keyword := range keywords {
+			// Appends
+			mutations = append(mutations, fmt.Sprintf("https://%s%s.%s", word, keyword, S3_URL))
+			mutations = append(mutations, fmt.Sprintf("https://%s.%s.%s", word, keyword, S3_URL))
+			mutations = append(mutations, fmt.Sprintf("https://%s-%s.%s", word, keyword, S3_URL))
 
-		// Prepends
-		mutations = append(mutations, fmt.Sprintf("http://%s%s.%s", keyword, word, S3_URL))
-		mutations = append(mutations, fmt.Sprintf("http://%s.%s.%s", keyword, word, S3_URL))
-		mutations = append(mutations, fmt.Sprintf("http://%s-%s.%s", keyword, word, S3_URL))
+			// Prepends
+			mutations = append(mutations, fmt.Sprintf("https://%s%s.%s", keyword, word, S3_URL))
+			mutations = append(mutations, fmt.Sprintf("https://%s.%s.%s", keyword, word, S3_URL))
+			mutations = append(mutations, fmt.Sprintf("https://%s-%s.%s", keyword, word, S3_URL))
+		}
 	}
+
 	return mutations
 }
 
@@ -161,21 +164,24 @@ func requester(url string, client *http.Client) int {
 }
 
 func main() {
-	var fuzzFile, nameserver, keyword string
-	var threads int
+	// Argparser
+	parser := argparse.NewParser("openendpoint", "Scan open endpoints like cloud buckets")
+	workers := parser.Int("w", "workers", &argparse.Options{Required: false, Help: "Number of workers (threads)", Default: 5})
+	keywords := parser.StringList("k", "keyword", &argparse.Options{Required: false, Help: "Keyword for url mutations"})
+	//dictionaryPath := parser.String("f", "file", &argparse.Options{Required: false, Help: "Dictionary path"})
+	nameserver := parser.String("n", "nameserver", &argparse.Options{Required: false, Help: "Custom nameserver", Default: "8.8.8.8 "})
+	err := parser.Parse(os.Args)
 
-	flag.IntVar(&threads, "threads", 5, "Number of threads")
-	flag.StringVar(&keyword, "keyword", "", "Keyword for mutation")
-	flag.StringVar(&fuzzFile, "fuzzFilePath", "fuzz.txt", "Specify fuzz.txt file path")
-	flag.StringVar(&nameserver, "nameserver", "8.8.8.8", "Specify custom nameserver")
-	flag.Parse()
+	if err != nil {
+		fmt.Println(parser.Usage(err))
+	}
 
 	filename := "logs.log"
 	logger := logger.FileLogger(filename)
 
 	start := time.Now()
-	mutations := Mutations(keyword)
+	mutations := Mutations(*keywords)
 	logger.Info(fmt.Sprintf("Mutations created in (%.2fs)", time.Since(start).Seconds()))
 
-	fetch(mutations, threads, nameserver, logger)
+	fetch(mutations, *workers, *nameserver, logger)
 }
