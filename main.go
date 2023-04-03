@@ -6,15 +6,21 @@ import (
 	"crypto/tls"
 	"fmt"
 	"github.com/akamensky/argparse"
+	"github.com/nanih98/openendpoint/internal/utils"
 	"github.com/nanih98/openendpoint/logger"
 	"go.uber.org/zap"
-	"log"
+	"io"
 	"net"
 	"net/http"
 	"os"
 	"sync"
 	"time"
 )
+
+type Response struct {
+	StatusCode   int
+	ResponseText string
+}
 
 const (
 	S3_URL = "s3.amazonaws.com"
@@ -41,9 +47,17 @@ func ReadFuzzFile() []string {
 	return words
 }
 
-func Mutations(keywords []string) []string {
+func Mutations(keywords []string, quickScan bool) []string {
 	var mutations []string
 
+	if quickScan {
+		for _, keyword := range keywords {
+			mutations = append(mutations, fmt.Sprintf("https://%s.%s", keyword, S3_URL))
+		}
+		return mutations
+	}
+
+	// If quickScan not selected, then create mutatiosn using your keywords and fuzz.txt file or your custom dictionary
 	words := ReadFuzzFile()
 
 	for _, word := range words {
@@ -63,8 +77,8 @@ func Mutations(keywords []string) []string {
 	return mutations
 }
 
-func fetch(urls []string, workers int, nameserver string, logger *zap.Logger) {
-	//var errs []error
+func fetch(urls []string, workers int, nameserver string, logger *zap.SugaredLogger) {
+	var errs []error
 
 	workQueue := make(chan string, len(urls))
 
@@ -79,25 +93,18 @@ func fetch(urls []string, workers int, nameserver string, logger *zap.Logger) {
 		go func(worker int, workQueue chan string) {
 			for uri := range workQueue {
 				//start := time.Now()
-				status := requester(uri, client)
+				response, err := requester(uri, client)
 
-				//if err != nil {
-				//	errs = append(errs, err)
-				//}
+				if err != nil {
+					errs = append(errs, err)
+				}
 
-				if status == 200 {
-					logger.Info("Opened bucket",
-						zap.Int("worker", worker),
-						zap.String("url", uri),
-						zap.Int("status", status),
-					)
-
-				} else if status == 403 {
-					logger.Warn("Protected bucket",
-						zap.Int("worker", worker),
-						zap.String("url", uri),
-						zap.Int("status", status),
-					)
+				if response.StatusCode == 200 {
+					logger.Info(fmt.Sprintf("Opened bucket %s", uri))
+					// List content
+					utils.ListBucketContents(response.ResponseText, uri)
+				} else {
+					logger.Warn(fmt.Sprintf("Not found %s %d", uri, response.StatusCode))
 				}
 			}
 			wg.Done()
@@ -111,6 +118,8 @@ func fetch(urls []string, workers int, nameserver string, logger *zap.Logger) {
 		close(workQueue)
 	}()
 	wg.Wait()
+
+	fmt.Println(errs)
 }
 
 func HTTPClient(nameserver string) *http.Client {
@@ -147,27 +156,39 @@ func HTTPClient(nameserver string) *http.Client {
 
 	client := &http.Client{
 		Transport: tr,
-		Timeout:   time.Second * 5,
+		Timeout:   time.Second * 15,
 	}
 
 	return client
 }
 
-func requester(url string, client *http.Client) int {
+func requester(url string, client *http.Client) (Response, error) {
 	resp, err := client.Get(url)
 
 	if err != nil {
-		log.Fatal(err)
+		return Response{}, err
 	}
 
-	return resp.StatusCode
+	defer resp.Body.Close()
+
+	responseData, err := io.ReadAll(resp.Body)
+
+	if err != nil {
+		return Response{}, err
+	}
+
+	responseString := string(responseData)
+
+	return Response{StatusCode: resp.StatusCode, ResponseText: responseString}, nil
 }
 
 func main() {
 	// Argparser
+	start := time.Now()
 	parser := argparse.NewParser("openendpoint", "Scan open endpoints like cloud buckets")
 	workers := parser.Int("w", "workers", &argparse.Options{Required: false, Help: "Number of workers (threads)", Default: 5})
-	keywords := parser.StringList("k", "keyword", &argparse.Options{Required: false, Help: "Keyword for url mutations"})
+	keywords := parser.StringList("k", "keyword", &argparse.Options{Required: true, Help: "Keyword for url mutations"})
+	quickScan := parser.Flag("q", "quick-scan", &argparse.Options{Required: false, Default: false, Help: "Quick scan, do not create mutations from fuzz.txt file"})
 	//dictionaryPath := parser.String("f", "file", &argparse.Options{Required: false, Help: "Dictionary path"})
 	nameserver := parser.String("n", "nameserver", &argparse.Options{Required: false, Help: "Custom nameserver", Default: "8.8.8.8 "})
 	err := parser.Parse(os.Args)
@@ -179,9 +200,10 @@ func main() {
 	filename := "logs.log"
 	logger := logger.FileLogger(filename)
 
-	start := time.Now()
-	mutations := Mutations(*keywords)
-	logger.Info(fmt.Sprintf("Mutations created in (%.2fs)", time.Since(start).Seconds()))
+	mutations := Mutations(*keywords, *quickScan)
+
+	logger.Info(fmt.Sprintf("%d Mutations created", len(mutations)))
 
 	fetch(mutations, *workers, *nameserver, logger)
+	logger.Info(fmt.Sprintf("all done in %s", time.Since(start)))
 }
