@@ -1,13 +1,12 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"crypto/tls"
 	"fmt"
 	"github.com/akamensky/argparse"
+	"github.com/nanih98/openendpoint/internal/logging"
 	"github.com/nanih98/openendpoint/internal/utils"
-	"github.com/nanih98/openendpoint/logger"
 	"go.uber.org/zap"
 	"io"
 	"net"
@@ -26,28 +25,7 @@ const (
 	S3_URL = "s3.amazonaws.com"
 )
 
-func ReadFuzzFile() []string {
-	var words []string
-	//readFile, err := os.Open("/usr/local/share/SecLists/Discovery/Web-Content/directory-list-2.3-small.txt")
-	readFile, err := os.Open("fuzz.txt")
-
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	fileScanner := bufio.NewScanner(readFile)
-
-	fileScanner.Split(bufio.ScanLines)
-
-	for fileScanner.Scan() {
-		words = append(words, fileScanner.Text())
-	}
-	readFile.Close()
-
-	return words
-}
-
-func Mutations(keywords []string, quickScan bool) []string {
+func Mutations(keywords []string, quickScan bool, logger *zap.SugaredLogger, dictionaryPath string) []string {
 	var mutations []string
 
 	if quickScan {
@@ -58,7 +36,7 @@ func Mutations(keywords []string, quickScan bool) []string {
 	}
 
 	// If quickScan not selected, then create mutatiosn using your keywords and fuzz.txt file or your custom dictionary
-	words := ReadFuzzFile()
+	words := utils.ReadFuzzFile(logger, dictionaryPath)
 
 	for _, word := range words {
 		for _, keyword := range keywords {
@@ -189,7 +167,7 @@ func main() {
 	workers := parser.Int("w", "workers", &argparse.Options{Required: false, Help: "Number of workers (threads)", Default: 5})
 	keywords := parser.StringList("k", "keyword", &argparse.Options{Required: true, Help: "Keyword for url mutations"})
 	quickScan := parser.Flag("q", "quick-scan", &argparse.Options{Required: false, Default: false, Help: "Quick scan, do not create mutations from fuzz.txt file"})
-	//dictionaryPath := parser.String("f", "file", &argparse.Options{Required: false, Help: "Dictionary path"})
+	dictionaryPath := parser.String("f", "file", &argparse.Options{Required: true, Help: "Dictionary path"})
 	nameserver := parser.String("n", "nameserver", &argparse.Options{Required: false, Help: "Custom nameserver", Default: "8.8.8.8 "})
 	err := parser.Parse(os.Args)
 
@@ -198,9 +176,9 @@ func main() {
 	}
 
 	filename := "logs.log"
-	logger := logger.FileLogger(filename)
+	logger := logging.FileLogger(filename)
 
-	mutations := Mutations(*keywords, *quickScan)
+	mutations := Mutations(*keywords, *quickScan, logger, *dictionaryPath)
 
 	logger.Info(fmt.Sprintf("%d Mutations created", len(mutations)))
 

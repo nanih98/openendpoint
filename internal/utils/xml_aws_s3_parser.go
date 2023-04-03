@@ -32,17 +32,3 @@ func ListBucketContents(response, url string) {
 		}
 	}
 }
-
-// Use regex to extract the <key> name is not the best idea
-//func ListBucketContents(response, url string) {
-//	keyRegex, _ := regexp.Compile("<(?:Key|Name)>(.*?)</(?:Key|Name)>")
-//
-//	keys := keyRegex.FindAll([]byte(response), -1)
-//
-//	if len(keys) > 0 {
-//		for _, key := range keys {
-//			object := url + string(key)
-//			fmt.Println(object)
-//		}
-//	}
-//}

@@ -31,17 +31,17 @@ changelog:
       - '^docs:'
       - '^test:'
 
-#brews:
-#  - # GitHub repository to push the formula
-#    tap:
-#      owner: nanih98
-#      name: aws-sso
-#    name: aws-sso
-#    url_template: "https://github.com/nanih98/aws-sso/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
-#    homepage: https://github.com/nanih98/aws-sso
-#    commit_author:
-#      name: goreleaserbot
-#      email: bot@goreleaser.com
-#    folder: Formula
-#    description: "AWS account credentials using SSO"
-#    license: "Apache 2.0 license"
+brews:
+  - # GitHub repository to push the formula
+    tap:
+      owner: nanih98
+      name: openendpoint
+    name: openendpoint
+    url_template: "https://github.com/nanih98/openendpoint/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+    homepage: https://github.com/nanih98/openendpoint
+    commit_author:
+      name: goreleaserbot
+      email: bot@goreleaser.com
+    folder: Formula
+    description: "Scan cloud open endpoints"
+    license: "Apache 2.0 license"
