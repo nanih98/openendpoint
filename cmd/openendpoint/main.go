@@ -1,164 +1,14 @@
 package main
 
 import (
-	"context"
-	"crypto/tls"
 	"fmt"
 	"github.com/akamensky/argparse"
+	"github.com/nanih98/openendpoint/internal/httpclient"
 	"github.com/nanih98/openendpoint/internal/logging"
-	"github.com/nanih98/openendpoint/internal/utils"
-	"go.uber.org/zap"
-	"io"
-	"net"
-	"net/http"
+	"github.com/nanih98/openendpoint/internal/providers"
 	"os"
-	"sync"
 	"time"
 )
-
-type Response struct {
-	StatusCode   int
-	ResponseText string
-}
-
-const (
-	S3_URL = "s3.amazonaws.com"
-)
-
-func Mutations(keywords []string, quickScan bool, logger *zap.SugaredLogger, dictionaryPath string) []string {
-	var mutations []string
-
-	if quickScan {
-		for _, keyword := range keywords {
-			mutations = append(mutations, fmt.Sprintf("https://%s.%s", keyword, S3_URL))
-		}
-		return mutations
-	}
-
-	// If quickScan not selected, then create mutatiosn using your keywords and fuzz.txt file or your custom dictionary
-	words := utils.ReadFuzzFile(logger, dictionaryPath)
-
-	for _, word := range words {
-		for _, keyword := range keywords {
-			// Appends
-			mutations = append(mutations, fmt.Sprintf("https://%s%s.%s", word, keyword, S3_URL))
-			mutations = append(mutations, fmt.Sprintf("https://%s.%s.%s", word, keyword, S3_URL))
-			mutations = append(mutations, fmt.Sprintf("https://%s-%s.%s", word, keyword, S3_URL))
-
-			// Prepends
-			mutations = append(mutations, fmt.Sprintf("https://%s%s.%s", keyword, word, S3_URL))
-			mutations = append(mutations, fmt.Sprintf("https://%s.%s.%s", keyword, word, S3_URL))
-			mutations = append(mutations, fmt.Sprintf("https://%s-%s.%s", keyword, word, S3_URL))
-		}
-	}
-
-	return mutations
-}
-
-func fetch(urls []string, workers int, nameserver string, logger *zap.SugaredLogger) {
-	var errs []error
-
-	workQueue := make(chan string, len(urls))
-
-	wg := sync.WaitGroup{}
-	wg.Add(workers)
-
-	// HTTP CLIENT
-	client := HTTPClient(nameserver)
-
-	for i := 0; i < workers; i++ {
-		worker := i
-		go func(worker int, workQueue chan string) {
-			for uri := range workQueue {
-				//start := time.Now()
-				response, err := requester(uri, client)
-
-				if err != nil {
-					errs = append(errs, err)
-				}
-
-				if response.StatusCode == 200 {
-					logger.Info(fmt.Sprintf("Opened bucket %s", uri))
-					// List content
-					utils.ListBucketContents(response.ResponseText, uri)
-				} else {
-					logger.Warn(fmt.Sprintf("Not found %s %d", uri, response.StatusCode))
-				}
-			}
-			wg.Done()
-		}(worker, workQueue)
-	}
-
-	go func() {
-		for _, url := range urls {
-			workQueue <- url
-		}
-		close(workQueue)
-	}()
-	wg.Wait()
-
-	fmt.Println(errs)
-}
-
-func HTTPClient(nameserver string) *http.Client {
-	var (
-		dnsResolverIP        = nameserver + ":53"
-		dnsResolverProto     = "udp"
-		dnsResolverTimeoutMs = 5000
-	)
-
-	dialer := &net.Dialer{
-		Resolver: &net.Resolver{
-			PreferGo: true,
-			Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
-				d := net.Dialer{
-					Timeout: time.Duration(dnsResolverTimeoutMs) * time.Millisecond,
-				}
-				return d.DialContext(ctx, dnsResolverProto, dnsResolverIP)
-			},
-		},
-	}
-
-	dialContext := func(ctx context.Context, network, addr string) (net.Conn, error) {
-		return dialer.DialContext(ctx, network, addr)
-	}
-
-	tr := &http.Transport{
-		MaxIdleConns:          50,
-		IdleConnTimeout:       30 * time.Second,
-		ResponseHeaderTimeout: 15 * time.Second,
-		DisableCompression:    true,
-		TLSClientConfig:       &tls.Config{InsecureSkipVerify: true},
-		DialContext:           dialContext,
-	}
-
-	client := &http.Client{
-		Transport: tr,
-		Timeout:   time.Second * 15,
-	}
-
-	return client
-}
-
-func requester(url string, client *http.Client) (Response, error) {
-	resp, err := client.Get(url)
-
-	if err != nil {
-		return Response{}, err
-	}
-
-	defer resp.Body.Close()
-
-	responseData, err := io.ReadAll(resp.Body)
-
-	if err != nil {
-		return Response{}, err
-	}
-
-	responseString := string(responseData)
-
-	return Response{StatusCode: resp.StatusCode, ResponseText: responseString}, nil
-}
 
 func main() {
 	// Argparser
@@ -178,10 +28,10 @@ func main() {
 	filename := "logs.log"
 	logger := logging.FileLogger(filename)
 
-	mutations := Mutations(*keywords, *quickScan, logger, *dictionaryPath)
+	awsMutations := providers.AWSMutations(*keywords, *quickScan, logger, *dictionaryPath)
 
-	logger.Info(fmt.Sprintf("%d Mutations created", len(mutations)))
+	logger.Info(fmt.Sprintf("%d Mutations created", len(awsMutations)))
 
-	fetch(mutations, *workers, *nameserver, logger)
+	httpclient.Fetch(awsMutations, *workers, *nameserver, logger)
 	logger.Info(fmt.Sprintf("all done in %s", time.Since(start)))
 }
