@@ -19,6 +19,8 @@ func main() {
 	quickScan := parser.Flag("q", "quick-scan", &argparse.Options{Required: false, Default: false, Help: "Quick scan, do not create mutations from fuzz.txt file"})
 	dictionaryPath := parser.String("f", "file", &argparse.Options{Required: true, Help: "Dictionary path"})
 	nameserver := parser.String("n", "nameserver", &argparse.Options{Required: false, Help: "Custom nameserver", Default: "8.8.8.8 "})
+
+	logLevel := parser.String("l", "log-level", &argparse.Options{Required: false, Help: "Log Level", Default: "info"})
 	err := parser.Parse(os.Args)
 
 	if err != nil {
@@ -26,12 +28,12 @@ func main() {
 	}
 
 	filename := "logs.log"
-	logger := logging.FileLogger(filename)
+	logger := logging.FileLogger(filename, *logLevel)
 
 	awsMutations := providers.AWSMutations(*keywords, *quickScan, logger, *dictionaryPath)
 
-	logger.Info(fmt.Sprintf("%d Mutations created", len(awsMutations)))
+	logger.Log.Info(fmt.Sprintf("%d Mutations created", len(awsMutations)))
 
 	httpclient.Fetch(awsMutations, *workers, *nameserver, logger)
-	logger.Info(fmt.Sprintf("all done in %s", time.Since(start)))
+	logger.Log.Info(fmt.Sprintf("all done in %s", time.Since(start)))
 }

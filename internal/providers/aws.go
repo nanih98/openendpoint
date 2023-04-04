@@ -2,11 +2,11 @@ package providers
 
 import (
 	"fmt"
+	"github.com/nanih98/openendpoint/internal/logging"
 	"github.com/nanih98/openendpoint/internal/utils"
-	"go.uber.org/zap"
 )
 
-func AWSMutations(keywords []string, quickScan bool, logger *zap.SugaredLogger, dictionaryPath string) []string {
+func AWSMutations(keywords []string, quickScan bool, logger logging.Logger, dictionaryPath string) []string {
 	var mutations []string
 
 	if quickScan {

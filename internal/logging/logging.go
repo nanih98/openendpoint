@@ -26,7 +26,7 @@ func (l *Logger) LogLevel(level string) {
 	}
 }
 
-func FileLogger(filename string) Logger {
+func FileLogger(filename string, level string) Logger {
 	config := zap.NewProductionEncoderConfig()
 	config.EncodeTime = zapcore.TimeEncoderOfLayout("Jan 02 15:04:05.000000000")
 	config.TimeKey = "timestamp"
@@ -39,7 +39,9 @@ func FileLogger(filename string) Logger {
 	logFile, _ := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	writer := zapcore.AddSync(logFile)
 
-	defaultLogLevel := zapcore.InfoLevel
+	//defaultLogLevel := zapcore.DebugLevel
+
+	defaultLogLevel, _ := zapcore.ParseLevel(level)
 
 	core := zapcore.NewTee(
 		zapcore.NewCore(fileEncoder, writer, defaultLogLevel),
@@ -47,6 +49,6 @@ func FileLogger(filename string) Logger {
 	)
 
 	logger := zap.New(core, zap.AddCaller(), zap.AddStacktrace(zapcore.ErrorLevel))
-	
+
 	return Logger{Log: logger.Sugar()}
 }
