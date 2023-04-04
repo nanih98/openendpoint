@@ -7,7 +7,26 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-func FileLogger(filename string) *zap.SugaredLogger {
+type Logger struct {
+	Log *zap.SugaredLogger
+}
+
+func (l *Logger) LogLevel(level string) {
+	switch level {
+	case "debug":
+
+	case "info":
+
+	case "warning":
+
+	case "error":
+
+	case "trace":
+
+	}
+}
+
+func FileLogger(filename string) Logger {
 	config := zap.NewProductionEncoderConfig()
 	config.EncodeTime = zapcore.TimeEncoderOfLayout("Jan 02 15:04:05.000000000")
 	config.TimeKey = "timestamp"
@@ -20,7 +39,7 @@ func FileLogger(filename string) *zap.SugaredLogger {
 	logFile, _ := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	writer := zapcore.AddSync(logFile)
 
-	defaultLogLevel := zapcore.DebugLevel
+	defaultLogLevel := zapcore.InfoLevel
 
 	core := zapcore.NewTee(
 		zapcore.NewCore(fileEncoder, writer, defaultLogLevel),
@@ -28,6 +47,6 @@ func FileLogger(filename string) *zap.SugaredLogger {
 	)
 
 	logger := zap.New(core, zap.AddCaller(), zap.AddStacktrace(zapcore.ErrorLevel))
-
-	return logger.Sugar()
+	
+	return Logger{Log: logger.Sugar()}
 }

@@ -34,7 +34,7 @@ func Fetch(urls []string, workers int, nameserver string, logger *zap.SugaredLog
 					// List content
 					utils.ListBucketContents(response.ResponseText, uri)
 				} else if response.StatusCode == 403 {
-					logger.Warn(fmt.Sprintf("Protected bucket %s", uri))
+					logger.Debug(fmt.Sprintf("Protected bucket %s", uri))
 				}
 			}
 			wg.Done()

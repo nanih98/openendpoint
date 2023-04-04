@@ -7,5 +7,11 @@ help: ## this help
 doctoc: ## Create table of contents with doctoc
 	doctoc .
 
-goreleaser: ## Generate go binaries using goreleaser
+goreleaser: ## Generate go binaries using goreleaser (brew install goreleaser)
 	goreleaser release --snapshot --rm-dist
+
+golangci-lint: ## Lint Golang code (brew install golangci-lint)
+	golangci-lint
+
+##https://github.com/moovweb/gvm
+
