@@ -21,6 +21,7 @@ func main() {
 	dictionaryPath := parser.String("f", "file", &argparse.Options{Required: true, Help: "Dictionary path"})
 	nameserver := parser.String("n", "nameserver", &argparse.Options{Required: false, Help: "Custom nameserver", Default: "8.8.8.8 "})
 	logLevel := parser.Selector("l", "log-level", []string{"info", "debug"}, &argparse.Options{Required: false, Default: "info", Help: "Log level of the application"})
+	//logFile := parser.File("lf", "log-file", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644, &argparse.Options{Required: false, Help: "Log file path"})
 
 	err := parser.Parse(os.Args)
 
