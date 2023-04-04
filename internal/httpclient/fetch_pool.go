@@ -2,12 +2,12 @@ package httpclient
 
 import (
 	"fmt"
-	"github.com/nanih98/openendpoint/internal/logging"
 	"github.com/nanih98/openendpoint/internal/utils"
+	"go.uber.org/zap"
 	"sync"
 )
 
-func Fetch(urls []string, workers int, nameserver string, logger logging.Logger) {
+func Fetch(urls []string, workers int, nameserver string, logger *zap.SugaredLogger) {
 	var errs []error
 
 	workQueue := make(chan string, len(urls))
@@ -30,11 +30,11 @@ func Fetch(urls []string, workers int, nameserver string, logger logging.Logger)
 				}
 
 				if response.StatusCode == 200 {
-					logger.Log.Info(fmt.Sprintf("Opened bucket %s", uri))
+					logger.Info(fmt.Sprintf("Opened bucket %s", uri))
 					// List content
 					utils.ListBucketContents(response.ResponseText, uri)
 				} else if response.StatusCode == 403 {
-					logger.Log.Debug(fmt.Sprintf("Protected bucket %s", uri))
+					logger.Debug(fmt.Sprintf("Protected bucket %s", uri))
 				}
 			}
 			wg.Done()
