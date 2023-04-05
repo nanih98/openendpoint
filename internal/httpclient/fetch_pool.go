@@ -7,9 +7,7 @@ import (
 	"sync"
 )
 
-func Fetch(urls []string, workers int, nameserver string, logger *logging.CustomLogger) {
-	var errs []error
-
+func Fetch(urls []string, workers int, nameserver string, logger *logging.CustomLogger, m chan string, e chan error) {
 	workQueue := make(chan string, len(urls))
 
 	wg := sync.WaitGroup{}
@@ -26,11 +24,11 @@ func Fetch(urls []string, workers int, nameserver string, logger *logging.Custom
 				response, err := requester(uri, client)
 
 				if err != nil {
-					errs = append(errs, err)
+					e <- err
 				}
 
 				if response.StatusCode == 200 {
-					logger.Log.Info(fmt.Sprintf("Opened bucket %s", uri))
+					m <- fmt.Sprintf("Opened bucket %s", uri)
 					// List content
 					utils.ListBucketContents(response.ResponseText, uri)
 				} else if response.StatusCode == 403 {
@@ -48,6 +46,4 @@ func Fetch(urls []string, workers int, nameserver string, logger *logging.Custom
 		close(workQueue)
 	}()
 	wg.Wait()
-
-	fmt.Println(errs)
 }

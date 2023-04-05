@@ -22,7 +22,6 @@ func main() {
 	nameserver := parser.String("n", "nameserver", &argparse.Options{Required: false, Help: "Custom nameserver", Default: "8.8.8.8 "})
 	logLevel := parser.Selector("l", "log-level", []string{"info", "debug"}, &argparse.Options{Required: false, Default: "info", Help: "Log level of the application"})
 	//logFile := parser.File("", "log-file", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644, &argparse.Options{Required: false, Default: nil, Help: "Log file path"})
-
 	err := parser.Parse(os.Args)
 
 	if err != nil {
@@ -35,10 +34,27 @@ func main() {
 		Sugared:  true,
 	})
 
+	messages := make(chan string)
+	errors := make(chan error)
+
 	awsMutations := providers.AWSMutations(*keywords, *quickScan, logger, *dictionaryPath)
 
 	logger.Log.Info(fmt.Sprintf("%d Mutations created", len(awsMutations)))
 
-	httpclient.Fetch(awsMutations, *workers, *nameserver, logger)
+	go func() {
+		httpclient.Fetch(awsMutations, *workers, *nameserver, logger, messages, errors)
+	}()
+
+	// Read all the application messages
+	for {
+		select {
+		case msg := <-messages:
+			logger.Log.Info(msg)
+		case error := <-errors:
+			// Also prints error messages
+			logger.Log.Error(error)
+		}
+	}
+
 	logger.Log.Info(fmt.Sprintf("all done in %s", time.Since(start)))
 }
