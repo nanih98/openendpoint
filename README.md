@@ -10,11 +10,17 @@
     <img alt="GitHub go.mod Go version" src="https://img.shields.io/github/go-mod/go-version/nanih98/openendpoint">
 </p>
 
-<p align="center" >
-    <a href="https://github.com/nanih98/openendpoint/actions/workflows/releases.yml"><img alt="Pipeline" src="https://github.com/nanih98/openendpoint/actions/workflows/releases.yml/badge.svg"></a>
-    <a href="https://github.com/nanih98/openendpoint/actions/workflows/lint.yml"><img alt="Pipeline" src="https://github.com/nanih98/openendpoint/actions/workflows/lint.yml/badge.svg"></a>
-    <a href="https://github.com/nanih98/openendpoint/blob/main/LICENSE"><img alt="LICENSE" src="https://img.shields.io/github/license/nanih98/openendpoint"></a>
-</p>
+
+# Documentation
+Take a look inside [docs](./docs) folder.
+
+# Badges
+
+![Build Status](https://github.com/nanih98/openendpoint/actions/workflows/releases.yml/badge.svg)
+![Linter Status](https://github.com/nanih98/openendpoint/actions/workflows/lint.yml/badge.svg)
+[![License](https://img.shields.io/github/license/nanih98/openendpoint)](/LICENSE)
+[![Release](https://img.shields.io/github/release/nanih98/openendpoint)](https://github.com/nanih98/openendpoint/releases/latest)
+[![GitHub Releases Stats](https://img.shields.io/github/downloads/nanih98/openendpoint/total.svg?logo=github)](https://somsubhra.github.io/github-release-stats/?username=nanih98&repository=openendpoint)
 
 # Usage
 ```sh

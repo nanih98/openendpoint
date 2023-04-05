@@ -6,6 +6,7 @@ import (
 	"github.com/nanih98/openendpoint/internal/httpclient"
 	"github.com/nanih98/openendpoint/internal/logging"
 	"github.com/nanih98/openendpoint/internal/providers"
+	"log"
 	"os"
 	"time"
 )
@@ -19,19 +20,25 @@ func main() {
 	quickScan := parser.Flag("q", "quick-scan", &argparse.Options{Required: false, Default: false, Help: "Quick scan, do not create mutations from fuzz.txt file"})
 	dictionaryPath := parser.String("f", "file", &argparse.Options{Required: true, Help: "Dictionary path"})
 	nameserver := parser.String("n", "nameserver", &argparse.Options{Required: false, Help: "Custom nameserver", Default: "8.8.8.8 "})
+	logLevel := parser.Selector("l", "log-level", []string{"info", "debug"}, &argparse.Options{Required: false, Default: "info", Help: "Log level of the application"})
+	//logFile := parser.File("", "log-file", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644, &argparse.Options{Required: false, Default: nil, Help: "Log file path"})
+
 	err := parser.Parse(os.Args)
 
 	if err != nil {
-		fmt.Println(parser.Usage(err))
+		log.Fatal(fmt.Println(parser.Usage(err)))
 	}
 
-	filename := "logs.log"
-	logger := logging.FileLogger(filename)
+	logger := logging.NewLogger(&logging.LoggerOptions{
+		//LogFilePath: *logFile,
+		LogLevel: *logLevel,
+		Sugared:  true,
+	})
 
 	awsMutations := providers.AWSMutations(*keywords, *quickScan, logger, *dictionaryPath)
 
-	logger.Info(fmt.Sprintf("%d Mutations created", len(awsMutations)))
+	logger.Log.Info(fmt.Sprintf("%d Mutations created", len(awsMutations)))
 
 	httpclient.Fetch(awsMutations, *workers, *nameserver, logger)
-	logger.Info(fmt.Sprintf("all done in %s", time.Since(start)))
+	logger.Log.Info(fmt.Sprintf("all done in %s", time.Since(start)))
 }

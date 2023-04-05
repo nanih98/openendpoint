@@ -2,16 +2,17 @@ package utils
 
 import (
 	"bufio"
-	"go.uber.org/zap"
+	"fmt"
+	"github.com/nanih98/openendpoint/internal/logging"
 	"os"
 )
 
-func ReadFuzzFile(logger *zap.SugaredLogger, dictionaryPath string) []string {
+func ReadFuzzFile(logger *logging.CustomLogger, dictionaryPath string) []string {
 	var words []string
 	readFile, err := os.Open(dictionaryPath)
 
 	if err != nil {
-		logger.Fatal(err)
+		logger.Log.Panic(fmt.Sprintf("%v", err))
 	}
 
 	fileScanner := bufio.NewScanner(readFile)
