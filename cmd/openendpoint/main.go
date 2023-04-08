@@ -36,23 +36,26 @@ func main() {
 
 	messages := make(chan string)
 	errors := make(chan error)
+	requestError := make(chan string)
 
 	awsMutations := providers.AWSMutations(*keywords, *quickScan, logger, *dictionaryPath)
 
 	logger.Log.Info(fmt.Sprintf("%d Mutations created", len(awsMutations)))
 
-	go func() {
-		httpclient.Fetch(awsMutations, *workers, *nameserver, logger, messages, errors)
-	}()
+	go httpclient.Fetch(awsMutations, *workers, *nameserver, logger, messages, requestError, errors)
 
 	// Read all the application messages
 	for {
 		select {
 		case msg := <-messages:
 			logger.Log.Info(msg)
+		case re := <-requestError:
+			logger.Log.Debug(re)
 		case error := <-errors:
 			// Also prints error messages
 			logger.Log.Error(error)
+		default:
+			logger.Log.Info("no work")
 		}
 	}
 

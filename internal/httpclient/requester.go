@@ -1,8 +1,10 @@
 package httpclient
 
 import (
+	"context"
 	"io"
 	"net/http"
+	"time"
 )
 
 type Response struct {
@@ -11,7 +13,12 @@ type Response struct {
 }
 
 func requester(url string, client *http.Client) (Response, error) {
-	resp, err := client.Get(url)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	defer cancel()
+
+	req, _ := http.NewRequestWithContext(ctx, "GET", url, nil)
+
+	resp, err := client.Do(req)
 
 	if err != nil {
 		return Response{}, err
