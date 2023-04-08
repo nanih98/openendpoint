@@ -18,10 +18,11 @@ func main() {
 	workers := parser.Int("w", "workers", &argparse.Options{Required: false, Help: "Number of workers (threads)", Default: 5})
 	keywords := parser.StringList("k", "keyword", &argparse.Options{Required: true, Help: "Keyword for url mutations"})
 	quickScan := parser.Flag("q", "quick-scan", &argparse.Options{Required: false, Default: false, Help: "Quick scan, do not create mutations from fuzz.txt file"})
-	dictionaryPath := parser.String("f", "file", &argparse.Options{Required: true, Help: "Dictionary path"})
+	dictionaryPath := parser.String("d", "dictionary", &argparse.Options{Required: true, Help: "Dictionary path"})
 	nameserver := parser.String("n", "nameserver", &argparse.Options{Required: false, Help: "Custom nameserver", Default: "8.8.8.8 "})
 	logLevel := parser.Selector("l", "log-level", []string{"info", "debug"}, &argparse.Options{Required: false, Default: "info", Help: "Log level of the application"})
 	//logFile := parser.File("", "log-file", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644, &argparse.Options{Required: false, Default: nil, Help: "Log file path"})
+	//logFile := parser.String("f", "log-file", &argparse.Options{Required: false, Default: "", Help: "Save logs into file if set"})
 	err := parser.Parse(os.Args)
 
 	if err != nil {
@@ -29,12 +30,12 @@ func main() {
 	}
 
 	logger := logging.NewLogger(&logging.LoggerOptions{
-		//LogFilePath: *logFile,
 		LogLevel: *logLevel,
-		Sugared:  true,
+		Sugar:    true,
 	})
 
 	messages := make(chan string)
+	requestError := make(chan string)
 	errors := make(chan error)
 	requestError := make(chan string)
 
@@ -44,7 +45,7 @@ func main() {
 
 	go httpclient.Fetch(awsMutations, *workers, *nameserver, logger, messages, requestError, errors)
 
-	// Read all the application messages
+	// Read all the application messages from channels
 	for {
 		select {
 		case msg := <-messages:
